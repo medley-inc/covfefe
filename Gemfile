@@ -10,3 +10,9 @@ group :development do
   gem 'pry-byebug'
   gem 'shotgun'
 end
+
+group :test do
+  gem 'rake'
+  gem 'rack-test', require: 'rack/test'
+  gem 'minitest'
+end
