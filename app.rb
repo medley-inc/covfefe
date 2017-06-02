@@ -4,6 +4,17 @@ require 'bundler'
 Bundler.require 'default', ENV['RACK_ENV']
 require 'tilt/erb'
 MONGO = Mongo::Client.new(ENV.fetch('MONGOLAB_URI', 'mongodb://localhost:27017/covfefe'), heartbeat_frequency: 60 * 60)
+MONGO[:apps].indexes.create_many(
+  [
+    { key: { name: 1 }, unique: true },
+    { key: { name: 1, version: 1 }, unique: true },
+  ]
+)
+MONGO[:hists].indexes.create_many(
+  [
+    { key: { app_id: 1, version: 1 }, unique: true },
+  ]
+)
 
 class App < Sinatra::Base
   use Rack::Auth::Basic do |username, password|
