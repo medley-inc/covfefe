@@ -87,7 +87,7 @@ class App < Sinatra::Base
       if is_new
         MONGO[:apps].insert_one(app)
       else
-        MONGO[:apps].update_one({ _id: app[:_id] }, app)
+        MONGO[:apps].update_one({ _id: app[:_id], version: old[:version] }, app)
       end
 
     end
@@ -124,7 +124,7 @@ class App < Sinatra::Base
       if is_new
         MONGO[:apps].insert_one(app)
       else
-        MONGO[:apps].update_one({ _id: app[:_id] }, app)
+        MONGO[:apps].update_one({ _id: app[:_id], version: old[:version] }, app)
       end
     end
 
