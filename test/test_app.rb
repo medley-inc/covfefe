@@ -1,5 +1,5 @@
 ENV['RACK_ENV'] ||= 'test'
-ENV['MONGOLAB_URI'] = 'mongodb://localhost:27017/covfefe-test'
+ENV['MONGODB_URI'] = 'mongodb://localhost:27017/covfefe-test'
 require 'minitest/autorun'
 require_relative '../app'
 
