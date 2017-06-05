@@ -40,7 +40,7 @@ class App < Sinatra::Base
     app, = apps_find_or_create name
 
     content_type :json
-    app[:data].to_h.to_json
+    app[:data].sort_by { |key, _| key }.to_h.to_json
   end
 
   post '/:name/set' do
