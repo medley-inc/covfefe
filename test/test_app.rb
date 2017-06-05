@@ -76,14 +76,6 @@ describe App do
       get '/sample_name'
       assert last_response_json_body == { 'a' => 'alpha', 'b' => 'bravo' }
     end
-
-    it 'text' do
-      get '/sample_name.sh'
-      assert last_response.body == <<~SH
-      a='alpha'
-      b='bravo'
-      SH
-    end
   end
 
   def post_json(uri, json)

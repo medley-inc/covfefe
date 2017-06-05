@@ -35,24 +35,12 @@ class App < Sinatra::Base
     end
   end
 
-  get %r{/([\w]+)(\.(?:sh|json))?} do
-    name = params['captures'][0]
-    format = params['captures'][1] || '.json'
+  get '/:name' do
+    name = params[:name]
     app, = apps_find_or_create name
 
-    if format == '.sh'
-      content_type :text
-      app[:data].map { |key, val|
-        if val.empty?
-          %(#{key}=)
-        else
-          %(#{key}='#{val}')
-        end
-      }.join("\n") << "\n"
-    else
-      content_type :json
-      app[:data].to_h.to_json
-    end
+    content_type :json
+    app[:data].to_h.to_json
   end
 
   post '/:name/set' do
