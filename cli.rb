@@ -3,31 +3,44 @@ require 'uri'
 require 'net/https'
 require 'json'
 require 'optparse'
+require 'fileutils'
 
 class CLI
   def initialize(argv)
     @argv = Array(argv)
-    @name = ''
-    @format = ''
-    @endpoint = 'http://localhost:9393'
   end
 
   def perform
     case @argv.first
     when 'set'
-      remainings = common_options(OptionParser.new).parse(@argv[1..-1])
-      Set.new(@name, @endpoint, remainings).perform
-    when 'unset'
-      remainings = common_options(OptionParser.new).parse(@argv[1..-1])
-      Unset.new(@name, @endpoint, remainings).perform
-    else
       parser = OptionParser.new do |opts|
         common_options opts
-        opts.on('-s') { @format = '.sh' }
+      end
+      remainings = parser.parse @argv[1..-1]
+      Set.new(build_requestor, @name, remainings).perform
+    when 'unset'
+      parser = OptionParser.new do |opts|
+        common_options opts
+      end
+      remainings = parser.parse @argv[1..-1]
+      Unset.new(build_requestor, @name, remainings).perform
+    else
+      options = { format: :json }
+      parser = OptionParser.new do |opts|
+        common_options opts
+        opts.on('-s') { options[:format] = :shell }
+        opts.on('-d OUTPUT_PATH') do |v|
+          options[:format] = :envdir
+          options[:path] = v
+        end
       end
       parser.parse @argv
-      Show.new(@name, @format, @endpoint).perform
+      Show.new(build_requestor, { name: @name }.merge(options)).perform
     end
+  end
+
+  def build_requestor
+    Requestor.new @endpoint
   end
 
   def common_options(opts)
@@ -36,42 +49,67 @@ class CLI
     opts
   end
 
-  class Unset
-    attr_accessor :name, :format, :endpoint
-    attr_reader :uri, :data
+  class Show
+    attr_reader :requestor, :options
 
-    def initialize(name, endpoint, data)
-      @name = name
-      @endpoint = endpoint
-      @uri = URI(endpoint)
-      @data = data
-    end
-
-    def generate_body
-      data.map { |datum| [datum, ''] }.to_h.to_json
+    def initialize(requestor, options)
+      @requestor = requestor
+      @options = options
     end
 
     def perform
-      klass = uri.scheme == 'https' ? Net::HTTPS : Net::HTTP
-      klass.start(uri.host, uri.port) do |client|
-        request = Net::HTTP::Post.new "/#{name}/unset"
-        request.body = generate_body
-        client.request(request) do |response|
-          puts response.body
+      response = request
+      exit! unless response.code == '200'
+
+      response_body = JSON.parse response.body
+      case options[:format]
+      when :json
+        puts JSON.pretty_generate response_body
+      when :shell
+        puts response_body.map { |key, val|
+          if val.empty?
+            %(#{key}=)
+          else
+            %(#{key}='#{val}')
+          end
+        }.join("\n") << "\n"
+      when :envdir
+        path = File.expand_path options[:path]
+        FileUtils.mkdir_p path
+        response_body.each do |key, val|
+          File.binwrite File.join(path, key), val
         end
       end
+    end
+
+    def request
+      requestor.perform Net::HTTP::Get.new "/#{options[:name]}"
     end
   end
 
   class Set
-    attr_accessor :name, :format, :endpoint
-    attr_reader :uri, :data
+    attr_reader :requestor, :name, :data
 
-    def initialize(name, endpoint, data)
+    def initialize(requestor, name, data)
+      @requestor = requestor
       @name = name
-      @endpoint = endpoint
-      @uri = URI(endpoint)
       @data = data
+    end
+
+    def perform
+      response = request
+      exit! unless response.code == '200'
+      puts JSON.pretty_generate JSON.parse(response.body)
+    end
+
+    def request
+      requestor.perform generate_request
+    end
+
+    def generate_request
+      Net::HTTP::Post.new("/#{name}/set").tap do |request|
+        request.body = generate_body
+      end
     end
 
     def generate_body
@@ -82,37 +120,49 @@ class CLI
       end
       result.to_json
     end
+  end
+
+  class Unset
+    attr_reader :requestor, :name, :data
+
+    def initialize(requestor, name, data)
+      @requestor = requestor
+      @name = name
+      @data = data
+    end
 
     def perform
-      klass = uri.scheme == 'https' ? Net::HTTPS : Net::HTTP
-      klass.start(uri.host, uri.port) do |client|
-        request = Net::HTTP::Post.new "/#{name}/set"
+      response = request
+      exit! unless response.code == '200'
+      puts JSON.pretty_generate JSON.parse(response.body)
+    end
+
+    def request
+      requestor.perform generate_request
+    end
+
+    def generate_request
+      Net::HTTP::Post.new("/#{name}/unset").tap do |request|
         request.body = generate_body
-        client.request(request) do |response|
-          puts response.body
-        end
       end
+    end
+
+    def generate_body
+      data.map { |datum| [datum, ''] }.to_h.to_json
     end
   end
 
-  class Show
-    attr_accessor :name, :format, :endpoint
+  class Requestor
     attr_reader :uri
 
-    def initialize(name, format, endpoint)
-      @name = name
-      @format = format
-      @endpoint = endpoint
+    def initialize(endpoint)
       @uri = URI(endpoint)
     end
 
-    def perform
-      klass = uri.scheme == 'https' ? Net::HTTPS : Net::HTTP
-      klass.start(uri.host, uri.port) do |client|
-        request = Net::HTTP::Get.new "/#{name}#{format}"
-        client.request(request) do |response|
-          puts response.body
-        end
+    def perform(request)
+      Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == 'https') do |client|
+        request.basic_auth(uri.user.to_s, uri.password.to_s) if uri.user || uri.password
+        client.request request
       end
     end
   end
