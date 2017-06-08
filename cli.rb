@@ -8,6 +8,8 @@ require 'fileutils'
 class CLI
   def initialize(argv)
     @argv = Array(argv)
+    @name = ENV.fetch('COVFEFE_APPNAME', nil)
+    @endpoint = ENV.fetch('COVFEFE_ENDPOINT', nil)
   end
 
   def perform
