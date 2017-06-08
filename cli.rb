@@ -35,6 +35,7 @@ class CLI
           options[:format] = :envdir
           options[:path] = v
         end
+        opts.on('-j') { options[:format] = :json_array }
       end
       parser.parse @argv
       Show.new(build_requestor, { name: @name }.merge(options)).perform
@@ -67,6 +68,8 @@ class CLI
       case options[:format]
       when :json
         puts JSON.pretty_generate response_body
+      when :json_array
+        puts JSON.pretty_generate(response_body.map { |name, value| { name: name, value: value } })
       when :shell
         puts response_body.map { |key, val|
           if val.empty?
