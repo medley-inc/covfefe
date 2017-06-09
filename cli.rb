@@ -118,12 +118,7 @@ class CLI
     end
 
     def generate_body
-      result = {}
-      data.each do |datum|
-        key, val = datum.split('=', 2)
-        result[key.to_s] = val.to_s
-      end
-      result.to_json
+      data.map { |datum| datum.split('=', 2).map(&:to_s) }.to_h.to_json
     end
   end
 
