@@ -33,6 +33,10 @@ class App < Sinatra::Base
         app.nil?
       ]
     end
+
+    def sorted_json(obj)
+      obj.sort_by { |key, _| key }.to_h.to_json
+    end
   end
 
   get '/:name' do
@@ -40,7 +44,7 @@ class App < Sinatra::Base
     app, = apps_find_or_create name
 
     content_type :json
-    app[:data].sort_by { |key, _| key }.to_h.to_json
+    sorted_json app[:data]
   end
 
   post '/:name/set' do
@@ -81,7 +85,7 @@ class App < Sinatra::Base
     end
 
     content_type :json
-    app[:data].to_h.to_json
+    sorted_json app[:data]
   end
 
   post '/:name/unset' do
@@ -117,6 +121,6 @@ class App < Sinatra::Base
     end
 
     content_type :json
-    app[:data].to_h.to_json
+    sorted_json app[:data]
   end
 end
