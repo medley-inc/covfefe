@@ -1,3 +1,4 @@
+#!/usr/bin/env ruby
 # frozon_string_literal: true
 require 'uri'
 require 'net/https'
