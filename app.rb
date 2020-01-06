@@ -3,6 +3,7 @@ ENV['RACK_ENV'] ||= 'development'
 require 'bundler'
 Bundler.require 'default', ENV['RACK_ENV']
 require 'tilt/erb'
+HISTS_TTL_SECOND = ENV.fetch('HISTS_TTL_SECOND', 60 * 60 * 24 * 30 * 3).to_i # default expire history after 3 months
 MONGO = Mongo::Client.new(ENV.fetch('MONGODB_URI', 'mongodb://localhost:27017/covfefe'), heartbeat_frequency: 60 * 60)
 MONGO[:apps].indexes.create_many(
   [
@@ -13,7 +14,7 @@ MONGO[:apps].indexes.create_many(
 MONGO[:hists].indexes.create_many(
   [
     { key: { app_id: 1, version: 1 }, unique: true },
-    { key: { created_at: 1 }, expire_after: 60 * 60 * 24 * 30 * 3 } # expire after 3 months
+    { key: { created_at: 1 }, expire_after: HISTS_TTL_SECOND }
   ]
 )
 
