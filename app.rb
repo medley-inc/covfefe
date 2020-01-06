@@ -13,6 +13,7 @@ MONGO[:apps].indexes.create_many(
 MONGO[:hists].indexes.create_many(
   [
     { key: { app_id: 1, version: 1 }, unique: true },
+    { key: { created_at: 1 }, expire_after: 60 * 60 * 24 * 30 * 3 } # expire after 3 months
   ]
 )
 
@@ -73,7 +74,8 @@ class App < Sinatra::Base
         _id:     BSON::ObjectId.new,
         app_id:  old[:_id],
         version: old[:version],
-        data:    old[:data]
+        data:    old[:data],
+        created_at: Time.now
       )
 
       if is_new
